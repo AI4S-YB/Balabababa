@@ -10,9 +10,12 @@
 
 | 数据库 | Skill文件 | 用途 |
 |--------|-----------|------|
-| NCBI SRA | `NCBI/NCBIdb.md` | 重测序/WGS原始测序数据检索 |
+| 🚀 PlantSRA API | `NCBI/PlantSRA_API.md` | **植物**SRA数据快速检索（API，<0.3s，686万条） |
+| NCBI SRA | `NCBI/NCBIdb.md` | 全物种重测序/WGS原始测序数据检索（Entrez） |
 | RiceGeneFunction | `RiceGeneFunction/ricegenefunction.md` | 水稻基因功能注释查询 |
 | ArabidopsisGeneFunction | `ArabidopsisGeneFunction/arabidopsisgenefunction.md` | 拟南芥基因功能注释查询 |
+
+> ⚠️ PlantSRA API 是植物物种的**优先路径**，NCBI SRA (Entrez) 作为非植物物种和 fallback。两路径输出格式统一。
 
 ## 使用方式
 
@@ -27,13 +30,17 @@
 
 | 用户意图 | 选择数据库 | Skill文件 |
 |---------|-----------|-----------|
-| 想获取原始测序数据(SRR/reads) | NCBI SRA | `NCBI/NCBIdb.md` |
+| 想获取**植物**原始测序数据(SRR/reads) | 🚀 PlantSRA API | `NCBI/PlantSRA_API.md` |
+| 想获取**非植物**原始测序数据 | NCBI SRA | `NCBI/NCBIdb.md` |
+| PlantSRA API 不可达/结果不足 | NCBI SRA (fallback) | `NCBI/NCBIdb.md` |
 | 查询水稻基因(Os格式)功能 | RiceGeneFunction | `RiceGeneFunction/ricegenefunction.md` |
 | 查询拟南芥基因(AT格式)功能 | ArabidopsisGeneFunction | `ArabidopsisGeneFunction/arabidopsisgenefunction.md` |
 
 ### 快速判断
 
-- **SRR/重测序/WGS** → NCBI SRA
+- **植物物种 + SRA/重测序/WGS** → 🚀 PlantSRA API (先 API 健康检查)
+- **非植物物种 + SRA** → NCBI SRA (Entrez)
+- **API 不可达** → NCBI SRA (fallback)
 - **Os01g... ~ Os12g... / LOC_Os...** → RiceGeneFunction  
 - **AT1G... ~ AT5G...** → ArabidopsisGeneFunction
 

@@ -10,9 +10,12 @@
 
 | 数据库 | 目录 | 用途 | 适用场景 |
 |--------|------|------|----------|
-| NCBI SRA | `NCBI/NCBIdb.md` | 重测序/WGS数据检索下载 | 用户想获取原始测序数据(SRR)进行分析 |
+| **Plant SRA API** 🚀 | `NCBI/PlantSRA_API.md` | **植物**SRA数据快速检索（API，<0.3s） | 用户想获取**植物物种**的原始测序数据(SRR)，优先使用 |
+| NCBI SRA | `NCBI/NCBIdb.md` | 全物种重测序/WGS数据检索下载（Entrez） | 非植物物种，或 API 不可用时的 fallback |
 | RiceGeneFunction | `RiceGeneFunction/ricegenefunction.md` | 水稻基因功能注释查询 | 用户想知道某个水稻基因的功能 |
 | ArabidopsisGeneFunction | `ArabidopsisGeneFunction/arabidopsisgenefunction.md` | 拟南芥基因功能注释查询 | 用户想查询拟南芥基因功能或搜索特定功能相关基因 |
+
+> **⚠️ 重要变更**：植物 SRA 查询现在有**双路径**——优先走 PlantSRA API（阿里云，686万条索引，<0.3s），API 不可达或结果不足时自动 fallback 到 NCBI Entrez（`NCBIdb.md`）。
 
 ---
 
@@ -38,7 +41,10 @@
 │  │     ↓                                                       │    │
 │  │ 是下载/检索/搜索数据吗？                                     │    │
 │  │     ↓                                                       │    │
-│  │  → 选择: NCBI SRA                                          │    │
+│  │ 是植物物种？                                                │    │
+│  │     ├── YES → 🚀 PlantSRA API (PlantSRA_API.md)           │    │
+│  │     │          API不可达/结果不足？ → NCBI SRA (fallback)   │    │
+│  │     └── NO  → 选择: NCBI SRA (NCBIdb.md)                  │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
@@ -53,6 +59,36 @@
 ```
 
 ### 意图判断示例
+
+#### 用户说："检索 O.meyeriana 的重测序数据"
+
+| 分析步骤 | 判断 |
+|----------|------|
+| 用户想做什么？ | 获取该物种的测序数据 |
+| 数据类型？ | 原始测序reads（不是基因功能） |
+| 是否涉及下载/检索数据？ | 是（检索SRA数据） |
+| 是植物物种吗？ | 是（Oryza meyeriana = 水稻野生近缘种） |
+| **意图结论** | 植物 SRA 数据 → **🚀 PlantSRA API** |
+| **执行** | 1. API 健康检查 → 2. 多关键词展开 → 3. Phase 1/2 查询 |
+
+#### 用户说："搜索玉米的重测序数据"
+
+| 分析步骤 | 判断 |
+|----------|------|
+| 用户想做什么？ | 获取玉米的测序数据 |
+| 数据类型？ | 原始测序reads |
+| 是植物物种吗？ | 是（玉米 = Zea mays） |
+| **意图结论** | 植物 SRA → **🚀 PlantSRA API** |
+| **关键词展开** | `Zea mays`, `maize`, `corn`, `Zea` |
+
+#### 用户说："查找人类的 WGS 数据"
+
+| 分析步骤 | 判断 |
+|----------|------|
+| 用户想做什么？ | 获取人类的重测序数据 |
+| 数据类型？ | 原始测序reads |
+| 是植物物种吗？ | 否（人类 = Homo sapiens） |
+| **意图结论** | 非植物物种 → **NCBI SRA (Entrez 路径)** |
 
 #### 用户说："检索 O.meyeriana 的重测序数据"
 
@@ -122,9 +158,10 @@
 
 | 用户意图 | 典型表述 | 选择数据库 |
 |---------|---------|-----------|
-| 获取物种的测序原始数据 | "检索xxx的SRA数据"、"下载xxx的重测序" | NCBI SRA |
-| 获取SRR号 | "查找SRR"、"搜索SRR accession" | NCBI SRA |
-| 查找reads数据 | "找WGS数据"、"获取原始序列" | NCBI SRA |
+| 获取**植物**物种的测序原始数据 | "检索水稻的SRA数据"、"下载玉米的重测序" | 🚀 **PlantSRA API** (优先) |
+| 获取非植物物种的测序数据 | "查找人类WGS"、"小鼠重测序" | NCBI SRA (Entrez) |
+| 获取SRR号（植物） | "查找水稻SRR"、"搜索拟南芥accession" | 🚀 **PlantSRA API** |
+| 查找reads数据（植物） | "找WGS数据"、"获取原始序列" | 🚀 **PlantSRA API** |
 | 了解某基因的功能 | "这个基因是干什么的"、"基因功能" | RiceGeneFunction |
 | 查询基因注释 | "查询xxx的注释"、"基因注释信息" | RiceGeneFunction |
 | 水稻基因相关 | 包含Os01g~Os12g或LOC_Os格式基因号 | RiceGeneFunction |
@@ -140,7 +177,10 @@
 ```
 1. 读取 balabababa/Databaseinfo.md 获取数据库索引
 2. 理解用户请求，判断用户意图（而非仅匹配关键词）
-3. 根据意图选择目标数据库
+3. 根据意图选择目标数据库：
+   - 植物 SRA 检索？ → 🚀 PlantSRA API (先检查 API 健康)
+   - 非植物 SRA？ → NCBI SRA (Entrez)
+   - 基因功能？ → RiceGeneFunction / ArabidopsisGeneFunction
 4. 加载对应的 .md skill文件
 5. 按照skill文件的流程执行查询
 6. 返回结果给用户
@@ -151,9 +191,10 @@
 AI在判断时应考虑以下因素：
 
 1. **数据类型**：用户想要原始测序数据，还是基因功能信息？
-2. **上下文**：用户的关注点是"数据获取"还是"功能理解"？
-3. **基因号格式**：是否提供了Os格式或LOC_Os格式的基因号？
-4. **动词意图**：用户使用了"检索/下载/搜索"还是"查询/功能/注释"？
+2. **物种范围**：是植物物种吗？→ 优先 API 路径；非植物 → Entrez 路径
+3. **上下文**：用户的关注点是"数据获取"还是"功能理解"？
+4. **基因号格式**：是否提供了Os格式或LOC_Os格式的基因号？
+5. **动词意图**：用户使用了"检索/下载/搜索"还是"查询/功能/注释"？
 
 ### 添加新数据库
 
@@ -169,6 +210,31 @@ AI在判断时应考虑以下因素：
 ---
 
 ## 数据库详情
+
+### 🚀 PlantSRA API (新增)
+
+**路径**: `NCBI/PlantSRA_API.md`
+
+**功能**:
+- 通过阿里云 API (`47.95.117.10:8080`) 快速检索植物 SRA 元数据
+- FTS5 全文搜索引擎，686 万+ 植物 SRA 记录
+- 响应速度 <0.3 秒（vs Entrez 的数秒～数分钟）
+- 自动按 BioProject 去重聚合
+- 支持逐条 SRR/DRR/ERR accession 列表
+
+**适用场景**:
+- 用户想快速了解某植物物种有哪些公开测序数据
+- 用户需要 SRR 号进行下载分析
+- 用户在检索/搜索/下载植物的 SRA/WGS/重测序数据
+
+**与 NCBI SRA (Entrez) 的关系**:
+- PlantSRA API = 快速路径（植物专用，优先使用）
+- NCBI SRA = 完整路径（全物种 + API 不可用时的 fallback）
+- 两个路径输出格式统一，用户无感知切换
+
+**前置准备**: `curl`（系统自带，无需额外安装 🎉）
+
+---
 
 ### NCBI SRA
 
@@ -240,15 +306,18 @@ AI在判断时应考虑以下因素：
 
 ```
 balabababa/
-├── Databaseinfo.md           # 本文件 - 数据库索引总览
+├── Databaseinfo.md                   # 本文件 - 数据库索引总览
+├── index.md                          # AI 助手入口
 ├── NCBI/
-│   └── NCBIdb.md            # NCBI SRA检索技能
+│   ├── PlantSRA_API.md              # 🚀 植物 SRA API 快速检索
+│   └── NCBIdb.md                    # NCBI SRA Entrez 检索（全物种 + fallback）
 ├── RiceGeneFunction/
-│   └── ricegenefunction.md   # 水稻基因功能查询技能
+│   └── ricegenefunction.md           # 水稻基因功能查询技能
 └── ArabidopsisGeneFunction/
-    ├── arabidopsisgenefunction.md  # 拟南芥基因功能主skill
-    ├── tair_query.md              # TAIR查询模块
-    └── araport_query.md           # Araport查询模块
+    ├── arabidopsisgenefunction.md    # 拟南芥基因功能主skill
+    ├── tair_query.md                # TAIR查询模块
+    ├── araport_query.md             # Araport查询模块
+    └── cold_tolerance_genes.md      # 耐寒性基因预置查询
 ```
 
 ---
@@ -313,9 +382,9 @@ balabababa/{数据库名称}/
 
 ## 版本信息
 
-- 系统版本: 1.2
+- 系统版本: 1.3
 - 创建日期: 2026-03-30
-- 更新日期: 2026-03-30
-- 当前数据库数: 3
+- 更新日期: 2026-06-02
+- 当前数据库数: 4（含双路径：PlantSRA API + NCBI Entrez）
 - 匹配方式: 意图判断（非关键词匹配）
-- 新增: ArabidopsisGeneFunction (拟南芥基因功能查询)
+- 新增: 🚀 PlantSRA API (阿里云植物 SRA 快速检索，686万条，<0.3s)
