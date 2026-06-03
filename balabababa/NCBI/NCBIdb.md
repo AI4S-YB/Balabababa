@@ -1,15 +1,22 @@
 # NCBI SRA 数据检索技能
 
+> **⚠️ 路径选择提示**：如果用户检索的是**植物物种**，优先使用 `PlantSRA_API.md`（阿里云 API，<0.3s，686 万条记录）。本文件作为以下场景使用：
+> 1. 非植物物种（人类、小鼠、微生物等）
+> 2. PlantSRA API 不可达或结果不足时的 **fallback**
+> 3. 需要精确筛选 Strategy/Source/Platform 元数据时
+
 ## 描述
 自动化的 NCBI Sequence Read Archive (SRA) 数据检索智能体。根据用户提供的物种关键词，检索全基因组重测序(WGS)数据，返回符合条件的 SRR accession 列表及网页证据。
 
 ## 触发条件
-当用户请求检索特定物种的 SRA 重测序数据时激活。
+当用户请求检索 SRA 重测序数据时激活。**植物物种请先尝试 `PlantSRA_API.md`**。
 
 **示例请求**:
-- "检索 O.meyeriana 的 SRA 数据"
-- "搜索人类 WGS 数据"
-- "找水稻的 resequencing 数据"
+- "检索人类的 WGS 数据"（非植物 → 本路径）
+- "搜索小鼠 resequencing 数据"（非植物 → 本路径）
+- "PlantSRA API 不可用，帮我用 Entrez 检索水稻数据"（fallback → 本路径）
+- "我需要筛选 Illumina PE150 的拟南芥数据"（需要精确元数据筛选 → 本路径）
+- "检索 O.meyeriana 的 SRA 数据"（植物 → ⚠️ 应先尝试 PlantSRA_API.md）
 
 ## 前置检查
 
@@ -274,6 +281,7 @@ Oryza_longistaminata_WGS_SRR_list_20260328.md
 
 | 情况 | 处理方式 |
 |------|----------|
+| **从 PlantSRA API fallback** | 使用 PlantSRA API 返回的 accession 列表作为起点，跳过 esearch，直接进入 esummary 阶段补全元数据 |
 | 检索式无结果 | 自动尝试下一个检索式 |
 | WGS 数据过少 | 放宽至包含 WGS 的 mixed strategy |
 | 遇到登录弹窗 | 关闭/忽略，继续公开访问 |
